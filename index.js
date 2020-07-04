@@ -4,7 +4,7 @@ let canvas = document.getElementById("canvas"),
   WIDTH,
   HEIGHT,
   RADIUS,
-  initRoundPopulation = 160;
+  initRoundPopulation = 5000;
 
 WIDTH = document.documentElement.clientWidth;
 HEIGHT = document.documentElement.clientHeight;
@@ -25,24 +25,32 @@ class Round_item {
     this.r = RADIUS;
     this.color = STROKE_COLOR;
   }
-  draw() {
+  draw(fill) {
     ctx.strokeStyle = this.color;
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.r, 0, 2 * Math.PI, false);
     ctx.closePath();
     ctx.stroke();
+    if (fill) {
+      ctx.fill();
+    }
   }
 }
 
 function clamp(val, min, max) {
   return val < min ? min : val > max ? max : val;
 }
+let aIndex = ~~(Math.random() * round.length);
+let bIndex = ~~(Math.random() * round.length);
+
 function init() {
   for (let i = 0; i < initRoundPopulation; i++) {
     const x = clamp(WIDTH * Math.random(), RADIUS, MAX_X);
     const y = clamp(HEIGHT * Math.random(), RADIUS, MAX_Y);
-    const sx = ~~(Math.random() * 2 + 1);
-    const sy = ~~(Math.random() * 2 + 1);
+    const initXDirection = Math.random() > 0.5 ? 1 : -1;
+    const initYDirection = Math.random() > 0.5 ? 1 : -1;
+    const sx = ~~(Math.random() * 1 + 0.1) * initXDirection;
+    const sy = ~~(Math.random() * 2 + 0.1) * initYDirection;
     round[i] = new Round_item(i, x, y, sx, sy);
   }
   draw();
@@ -52,10 +60,10 @@ init();
 // let count = 0;
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const aIndex = ~~(Math.random() * round.length);
-  const bIndex = ~~(Math.random() * round.length);
+  const [aIndex, bIndex] = closestPair(round);
   for (let i = 0; i < round.length; i++) {
-    round[i].draw();
+    const fill = i === aIndex || i === bIndex;
+    round[i].draw(fill);
     const { speedY, speedX } = round[i];
     const nextX = round[i].x + speedX;
     const nextY = round[i].y + speedY;
@@ -69,12 +77,11 @@ function draw() {
       round[i].speedY *= -1;
     }
   }
+  // closest Pair
+
+  // console.log(aIndex, bIndex)
+  //
   // 连接线
-  // ctx.moveTo(round[aIndex].x, round[aIndex].y);
-  // ctx.lineTo(round[bIndex].x, round[bIndex].y);
-  // cxt.strokeStyle = 'red';
-  // ctx.stroke();
-  // ctx.strokeStyle = 'gray';
   //
   window.requestAnimationFrame(draw);
 }
@@ -83,5 +90,26 @@ function inArea(x, y, r) {
   let res = 0;
   res = res | (y - r >= 0 && y + r <= HEIGHT);
   res = (res << 1) | (x - r >= 0 && x + r <= WIDTH);
+  return res;
+}
+function closestPair(roundList) {
+  let res = [0, 1];
+  const [a, b] = res;
+  let closestDistance = Math.sqrt(
+    (roundList[a].x - roundList[b].x) ** 2 +
+      (roundList[a].y - roundList[b].y) ** 2
+  );
+  for (let i = 0; i < roundList.length; i++) {
+    for (let j = i + 1; j < roundList.length; j++) {
+      let distance = Math.sqrt(
+        (roundList[i].x - roundList[j].x) ** 2 +
+          (roundList[i].y - roundList[j].y) ** 2
+      );
+      if (distance < closestDistance) {
+        res = [i, j];
+        closestDistance = distance;
+      }
+    }
+  }
   return res;
 }
