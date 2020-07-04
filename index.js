@@ -22,9 +22,9 @@ const button = document.getElementById("switch");
 // event handler
 button.addEventListener("click", (e) => {
   if (divideAndConquer) {
-    e.target.innerHTML = "brute";
-  } else {
     e.target.innerHTML = "divideAndConquer";
+  } else {
+    e.target.innerHTML = "brute";
   }
   divideAndConquer = !divideAndConquer;
 });
