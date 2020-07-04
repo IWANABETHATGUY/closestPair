@@ -4,11 +4,12 @@ let canvas = document.getElementById("canvas"),
   WIDTH,
   HEIGHT,
   RADIUS,
-  initRoundPopulation = 5000;
+  initRoundPopulation = 3000;
+const divideAndConquer = false;
 
 WIDTH = document.documentElement.clientWidth;
 HEIGHT = document.documentElement.clientHeight;
-RADIUS = 15;
+RADIUS = 10;
 MAX_X = WIDTH - RADIUS;
 MAX_Y = HEIGHT - RADIUS;
 const STROKE_COLOR = "gray";
@@ -49,8 +50,8 @@ function init() {
     const y = clamp(HEIGHT * Math.random(), RADIUS, MAX_Y);
     const initXDirection = Math.random() > 0.5 ? 1 : -1;
     const initYDirection = Math.random() > 0.5 ? 1 : -1;
-    const sx = ~~(Math.random() * 1 + 0.1) * initXDirection;
-    const sy = ~~(Math.random() * 2 + 0.1) * initYDirection;
+    const sx = (Math.random() * 1 + 0.5) * initXDirection;
+    const sy = (Math.random() * 1 + 0.5) * initYDirection;
     round[i] = new Round_item(i, x, y, sx, sy);
   }
   draw();
@@ -60,7 +61,7 @@ init();
 // let count = 0;
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const [aIndex, bIndex] = closestPair(round);
+  const [aIndex, bIndex] = closestPair2(round);
   for (let i = 0; i < round.length; i++) {
     const fill = i === aIndex || i === bIndex;
     round[i].draw(fill);
@@ -112,4 +113,93 @@ function closestPair(roundList) {
     }
   }
   return res;
+}
+
+function closestPair2(roundList) {
+  const PX = roundList.map((round, index) => ({
+    x: round.x,
+    y: round.y,
+    i: index,
+  }));
+  const PY = PX.slice();
+  PX.sort((a, b) => a.x - b.x);
+  PY.sort((a, b) => a.y - b.y);
+  const [a, b] = closestPair2Helper(PX, PY);
+  return [a.i, b.i]
+}
+
+function closestPair2Helper(px, py) {
+  if (px.length <= 3) {
+    
+    return px.length === 3 ? closestFromThree(px) : px;
+  }
+  const mid = ~~(px.length / 2);
+  const lx = px.slice(0, mid);
+  const rx = px.slice(mid);
+  const ly = [];
+  const ry = [];
+  for (let i = 0; i < py.length; i++) {
+    if (py[i].x < px[mid].x && ly.length < mid) {
+      ly.push(py[i]);
+    } else {
+      ry.push(py[i]);
+    }
+  }
+  let [l1, l2] = closestPair2Helper(lx, ly);
+  let [r1, r2] = closestPair2Helper(rx, ry);
+  let minPair;
+  let min;
+  // let min = Math.min(distance(l1, l2), distance(r1, r2));
+  if (distance(l1,l2) < distance(r1,r2)) {
+    min = distance(l1, l2)
+    minPair = [l1, l2]
+  }  else {
+    min = distance(r1, r2)
+    minPair = [r1, r2]
+  }
+  let [s1, s2] = closestSplitPair(px, py, min);
+  return s1 ? (distance(l1, l2) < distance(r1, r2)
+    ? distance(l1, l2) < distance(s1, s2)
+      ? [l1, l2]
+      : [s1, s2]
+    : distance(r1, r2) < distance(s1, s2)
+    ? [r1, r2]
+    : [s1, s2]) : minPair
+}
+function closestSplitPair(px, py, min) {
+  const mid = ~~(px.length / 2);
+  const midX = px[mid].x;
+  const sy = [];
+
+  const upBound = midX + min;
+  const lowBound = midX - min;
+  for (let i = 0; i < py.length; i++) {
+    if (py[i].x >= lowBound && py[i].x <= upBound) {
+      sy.push(py[i]);
+    }
+  }
+  let best = min;
+  let bestPair = [];
+  for (let i = 0; i < sy.length - 1; i++) {
+    for (let j = 1; j <= Math.min(7, sy.length - i - 1); j++) {
+      if (distance(sy[i], sy[i + j]) < best) {
+        best = distance(sy[i], sy[i + j]);
+        bestPair = [sy[i], sy[i + j]];
+      }
+    }
+  }
+  return bestPair;
+}
+function closestFromThree(parr) {
+  return distance(parr[0], parr[1]) < distance(parr[1], parr[2])
+    ? distance(parr[0], parr[1]) < distance(parr[0], parr[2])
+      ? [parr[0], parr[1]]
+      : [parr[0], parr[2]]
+    : distance(parr[1], parr[2]) < distance(parr[0], parr[2])
+    ? [parr[1], parr[2]]
+    : [parr[0], parr[2]];
+}
+
+function distance(a, b) {
+  return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
 }
