@@ -5,16 +5,30 @@ let canvas = document.getElementById("canvas"),
   HEIGHT,
   RADIUS,
   initRoundPopulation = 3000;
-const divideAndConquer = false;
+let divideAndConquer = false
 
 WIDTH = document.documentElement.clientWidth;
-HEIGHT = document.documentElement.clientHeight;
+HEIGHT = document.documentElement.clientHeight - 100;
 RADIUS = 10;
 MAX_X = WIDTH - RADIUS;
 MAX_Y = HEIGHT - RADIUS;
 const STROKE_COLOR = "gray";
+
 canvas.width = WIDTH;
 canvas.height = HEIGHT;
+
+const button = document.getElementById("switch");
+
+// event handler
+button.addEventListener("click", (e) => {
+  if (divideAndConquer) {
+    e.target.innerHTML = "brute";
+  } else {
+    e.target.innerHTML = "divideAndConquer";
+  }
+  divideAndConquer = !divideAndConquer;
+});
+//
 
 class Round_item {
   constructor(index, x, y, speedX, speedY) {
@@ -58,10 +72,13 @@ function init() {
 }
 
 init();
-// let count = 0;
+
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const [aIndex, bIndex] = closestPair2(round);
+
+  const algorithm = divideAndConquer ? closestPair2 : closestPair;
+  const [aIndex, bIndex] = algorithm(round);
+
   for (let i = 0; i < round.length; i++) {
     const fill = i === aIndex || i === bIndex;
     round[i].draw(fill);
@@ -78,12 +95,7 @@ function draw() {
       round[i].speedY *= -1;
     }
   }
-  // closest Pair
 
-  // console.log(aIndex, bIndex)
-  //
-  // 连接线
-  //
   window.requestAnimationFrame(draw);
 }
 
@@ -125,12 +137,11 @@ function closestPair2(roundList) {
   PX.sort((a, b) => a.x - b.x);
   PY.sort((a, b) => a.y - b.y);
   const [a, b] = closestPair2Helper(PX, PY);
-  return [a.i, b.i]
+  return [a.i, b.i];
 }
 
 function closestPair2Helper(px, py) {
   if (px.length <= 3) {
-    
     return px.length === 3 ? closestFromThree(px) : px;
   }
   const mid = ~~(px.length / 2);
@@ -150,21 +161,23 @@ function closestPair2Helper(px, py) {
   let minPair;
   let min;
   // let min = Math.min(distance(l1, l2), distance(r1, r2));
-  if (distance(l1,l2) < distance(r1,r2)) {
-    min = distance(l1, l2)
-    minPair = [l1, l2]
-  }  else {
-    min = distance(r1, r2)
-    minPair = [r1, r2]
+  if (distance(l1, l2) < distance(r1, r2)) {
+    min = distance(l1, l2);
+    minPair = [l1, l2];
+  } else {
+    min = distance(r1, r2);
+    minPair = [r1, r2];
   }
   let [s1, s2] = closestSplitPair(px, py, min);
-  return s1 ? (distance(l1, l2) < distance(r1, r2)
-    ? distance(l1, l2) < distance(s1, s2)
-      ? [l1, l2]
+  return s1
+    ? distance(l1, l2) < distance(r1, r2)
+      ? distance(l1, l2) < distance(s1, s2)
+        ? [l1, l2]
+        : [s1, s2]
+      : distance(r1, r2) < distance(s1, s2)
+      ? [r1, r2]
       : [s1, s2]
-    : distance(r1, r2) < distance(s1, s2)
-    ? [r1, r2]
-    : [s1, s2]) : minPair
+    : minPair;
 }
 function closestSplitPair(px, py, min) {
   const mid = ~~(px.length / 2);
@@ -190,6 +203,7 @@ function closestSplitPair(px, py, min) {
   }
   return bestPair;
 }
+
 function closestFromThree(parr) {
   return distance(parr[0], parr[1]) < distance(parr[1], parr[2])
     ? distance(parr[0], parr[1]) < distance(parr[0], parr[2])
