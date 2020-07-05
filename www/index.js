@@ -1,3 +1,4 @@
+import * as wasm from 'closest-pair'
 let canvas = document.getElementById("canvas"),
   ctx = canvas.getContext("2d"),
   round = [],
@@ -10,8 +11,8 @@ let divideAndConquer = false
 WIDTH = document.documentElement.clientWidth;
 HEIGHT = document.documentElement.clientHeight - 100;
 RADIUS = 10;
-MAX_X = WIDTH - RADIUS;
-MAX_Y = HEIGHT - RADIUS;
+const MAX_X = WIDTH - RADIUS;
+const MAX_Y = HEIGHT - RADIUS;
 const STROKE_COLOR = "gray";
 
 canvas.width = WIDTH;
@@ -76,7 +77,7 @@ init();
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const algorithm = divideAndConquer ? closestPairDC : closestPairBrute;
+  const algorithm = divideAndConquer ? closestPairDC : closestPairBruteWASM;
   const [aIndex, bIndex] = algorithm(round);
 
   for (let i = 0; i < round.length; i++) {
@@ -126,6 +127,13 @@ function closestPairBrute(roundList) {
     }
   }
   return res;
+}
+
+function closestPairBruteWASM(roundList) {
+  const rounds = roundList.map(({x, y}, i) => ({x, y, i}))
+  const res  = wasm.calculate(rounds);
+  
+  return [res, res];
 }
 // divide and conquer
 function closestPairDC(roundList) {
