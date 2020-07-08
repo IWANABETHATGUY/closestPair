@@ -42,9 +42,11 @@ extern "C" {
 //   }
 //   return res;
 // }
-// fn distance(a: &Point, b: &Point) -> f32 {
-//     ((a.x - b.x).powi(2) + (a.y - b.y).powi(2)).sqrt()
-// }
+fn distance(a: &RoundItem, b: &RoundItem) -> f32 {
+    let x = a.x - b.x;
+    let y = a.y - b.y;
+    (x * x + y * y).sqrt()
+}
 // #[wasm_bindgen]
 // pub fn calculate(points: &js_sys::Array) -> i32 {
 //     let points: Vec<i32> = points.into_serde().unwrap();
@@ -98,9 +100,84 @@ pub struct RoundCanvas {
     r: f32,
     count: usize,
     roundList: Vec<RoundItem>,
+    max_x: f32,
+    max_y: f32,
+}
+fn in_area(x: f32, y: f32, r: f32, height: f32, width: f32) -> u8 {
+    let res = 0 | (y - r >= 0.0 && y + r <= height) as u8;
+    return (res << 1) | (x - r >= 0.0 && x + r <= width) as u8;
 }
 #[wasm_bindgen]
 impl RoundCanvas {
+    // function closestPairBrute(roundList) {
+    //   let res = [0, 1];
+    //   const [a, b] = res;
+    //   let closestDistance = Math.sqrt(
+    //     (roundList[a].x - roundList[b].x) ** 2 +
+    //       (roundList[a].y - roundList[b].y) ** 2
+    //   );
+    //   for (let i = 0; i < roundList.length; i++) {
+    //     for (let j = i + 1; j < roundList.length; j++) {
+    //       let distance = Math.sqrt(
+    //         (roundList[i].x - roundList[j].x) ** 2 +
+    //           (roundList[i].y - roundList[j].y) ** 2
+    //       );
+    //       if (distance < closestDistance) {
+    //         res = [i, j];
+    //         closestDistance = distance;
+    //       }
+    //     }
+    //   }
+    //   return res;
+    // }
+    pub fn closest_pair_brute(&self) -> Vec<usize> {
+        let mut res = vec![0, 1];
+        let round_list = &self.roundList;
+        let mut closest_distance = distance(&round_list[0], &round_list[1]);
+        for (ii, ip) in round_list.iter().enumerate() {
+            for (ji, jp) in round_list.iter().enumerate().skip(ii + 1) {
+                let distance = distance(ip, jp);
+                if distance < closest_distance {
+                    res = vec![ii, ji];
+                    closest_distance = distance;
+                }
+            }
+        }
+        res
+    }
+    pub fn tick(&mut self) {
+        let max_x = self.max_x;
+        let max_y = self.max_y;
+        let r = self.r;
+        let height = self.height as f32;
+        let width = self.width as f32;
+        for item in self.roundList.iter_mut() {
+            let next_x = item.x + item.speed_x;
+            let next_y = item.y + item.speed_y;
+            item.x = if next_x < r {
+                r
+            } else if next_x > max_x {
+                max_x
+            } else {
+                next_x
+            };
+            item.y = if next_y < r {
+                r
+            } else if next_y > max_y {
+                max_y
+            } else {
+                next_y
+            };
+            let flag = in_area(next_x, next_y, r, height, width);
+            if (flag & 1) != 1 {
+                item.speed_x *= -1.0;
+            }
+            if ((flag >> 1) & 1) != 1 {
+                item.speed_y *= -1.0;
+            }
+        }
+    }
+
     pub fn new(width: i32, height: i32, r: f32, count: usize) -> RoundCanvas {
         let mut roundList = vec![];
         let max_x = width as f32 - r;
@@ -126,6 +203,8 @@ impl RoundCanvas {
             r,
             count,
             roundList,
+            max_x,
+            max_y,
         }
     }
 

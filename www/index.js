@@ -18,7 +18,6 @@ const STROKE_COLOR = "gray";
 
 canvas.width = WIDTH;
 canvas.height = HEIGHT;
-let a = new Float32Array()
 const button = document.getElementById("switch");
 
 // event handler
@@ -33,7 +32,9 @@ button.addEventListener("click", (e) => {
 //
 let speedXList = [];
 let speedYList = [];
-const twoTimesPi = 2 * Math.PI
+let wasmRoundList = [];
+let roundsCanvasWasm;
+const twoTimesPi = 2 * Math.PI;
 class RoundItem {
   constructor(index, x, y, speedX, speedY) {
     this.index = index;
@@ -50,19 +51,27 @@ class RoundItem {
     ctx.arc(this.x, this.y, this.r, 0, twoTimesPi, false);
     ctx.closePath();
     ctx.stroke();
-    fill && ctx.fill()
+    fill && ctx.fill();
   }
 }
-
+function drawCircle(x, y, r, fill = false) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, twoTimesPi, false);
+  // ctx.closePath();
+  ctx.stroke();
+  fill && ctx.fill();
+}
 function clamp(val, min, max) {
   return val < min ? min : val > max ? max : val;
 }
-let aIndex = ~~(Math.random() * round.length);
-let bIndex = ~~(Math.random() * round.length);
 
 function init() {
-  // const roundsCanvas = wasm.RoundCanvas.new(WIDTH, HEIGHT, RADIUS, 3000);
-  // let a = new U(memory.buffer, roundsCanvas.rounds(), 3000 * 5);
+  roundsCanvasWasm = wasm.RoundCanvas.new(WIDTH, HEIGHT, RADIUS, 3000);
+  wasmRoundList = new Float32Array(
+    memory.buffer,
+    roundsCanvasWasm.rounds(),
+    3000 * 5
+  );
   for (let i = 0; i < initRoundPopulation; i++) {
     const x = clamp(WIDTH * Math.random(), RADIUS, MAX_X);
     const y = clamp(HEIGHT * Math.random(), RADIUS, MAX_Y);
@@ -74,28 +83,45 @@ function init() {
     speedXList.push(sx);
     round[i] = new RoundItem(i, x, y, sx, sy);
   }
-  draw();
 }
 
 init();
+drawWasm();
+// draw()
+function drawWasm() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const [aIndex, bIndex] = roundsCanvasWasm.closest_pair_brute()
+  // console.log([aIndex, bIndex])
+  ctx.strokeStyle = "gray";
+  for (let i = 0; i < wasmRoundList.length; i += 5) {
+    const x = wasmRoundList[i];
+    const y = wasmRoundList[i + 1];
+    const r = wasmRoundList[i + 2];
+
+    drawCircle(x, y, r, false);
+
+  }
+  roundsCanvasWasm.tick()
+  window.requestAnimationFrame(drawWasm);
+}
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const algorithm = divideAndConquer ? closestPairDC : closestPairBruteWASM;
+  const algorithm = divideAndConquer ? closestPairDC : closestPairBrute;
   const [aIndex, bIndex] = algorithm(round);
-  ctx.strokeStyle = "gray"
+  ctx.strokeStyle = "gray";
   for (let i = 0; i < round.length; i++) {
     const currentRound = round[i];
-    currentRound.draw(i === aIndex || i === bIndex);
-    // const { speedY, speedX } = round[i];
+    currentRound.draw(false);
+    // currentRound.draw(i === aIndex || i === bIndex);
     const speedX = speedXList[i];
     const speedY = speedYList[i];
     const nextX = currentRound.x + speedX;
     const nextY = currentRound.y + speedY;
     currentRound.x = nextX < RADIUS ? RADIUS : nextX > MAX_X ? MAX_X : nextX;
     currentRound.y = nextY < RADIUS ? RADIUS : nextY > MAX_Y ? MAX_Y : nextY;
-    // round[i].y = clamp(nextY, RADIUS, MAX_Y);
     const flag = inArea(nextX, nextY, RADIUS);
     if (!(flag & 1)) {
       speedXList[i] *= -1;
@@ -103,13 +129,6 @@ function draw() {
     if (!((flag >> 1) & 1)) {
       speedYList[i] *= -1;
     }
-    // if (!vf) {
-    //   speedYList[i] *= -1;
-    // }
-
-    // if (!hf) {
-    //   speedXList[i] *= -1;
-    // }
   }
 
   window.requestAnimationFrame(draw);
