@@ -1,4 +1,5 @@
-import * as wasm from 'closest-pair'
+import * as wasm from "closest-pair";
+import { memory } from "closest-pair/closest_pair_bg";
 let canvas = document.getElementById("canvas"),
   ctx = canvas.getContext("2d"),
   round = [],
@@ -6,7 +7,7 @@ let canvas = document.getElementById("canvas"),
   HEIGHT,
   RADIUS,
   initRoundPopulation = 3000;
-let divideAndConquer = false
+let divideAndConquer = false;
 
 WIDTH = document.documentElement.clientWidth;
 HEIGHT = document.documentElement.clientHeight - 100;
@@ -17,7 +18,7 @@ const STROKE_COLOR = "gray";
 
 canvas.width = WIDTH;
 canvas.height = HEIGHT;
-
+let a = new Float32Array()
 const button = document.getElementById("switch");
 
 // event handler
@@ -30,8 +31,10 @@ button.addEventListener("click", (e) => {
   divideAndConquer = !divideAndConquer;
 });
 //
-
-class Round_item {
+let speedXList = [];
+let speedYList = [];
+const twoTimesPi = 2 * Math.PI
+class RoundItem {
   constructor(index, x, y, speedX, speedY) {
     this.index = index;
     this.x = x;
@@ -42,14 +45,12 @@ class Round_item {
     this.color = STROKE_COLOR;
   }
   draw(fill) {
-    ctx.strokeStyle = this.color;
+    // ctx.strokeStyle = this.color;
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.r, 0, 2 * Math.PI, false);
+    ctx.arc(this.x, this.y, this.r, 0, twoTimesPi, false);
     ctx.closePath();
     ctx.stroke();
-    if (fill) {
-      ctx.fill();
-    }
+    fill && ctx.fill()
   }
 }
 
@@ -60,6 +61,8 @@ let aIndex = ~~(Math.random() * round.length);
 let bIndex = ~~(Math.random() * round.length);
 
 function init() {
+  // const roundsCanvas = wasm.RoundCanvas.new(WIDTH, HEIGHT, RADIUS, 3000);
+  // let a = new U(memory.buffer, roundsCanvas.rounds(), 3000 * 5);
   for (let i = 0; i < initRoundPopulation; i++) {
     const x = clamp(WIDTH * Math.random(), RADIUS, MAX_X);
     const y = clamp(HEIGHT * Math.random(), RADIUS, MAX_Y);
@@ -67,7 +70,9 @@ function init() {
     const initYDirection = Math.random() > 0.5 ? 1 : -1;
     const sx = (Math.random() * 1 + 0.5) * initXDirection;
     const sy = (Math.random() * 1 + 0.5) * initYDirection;
-    round[i] = new Round_item(i, x, y, sx, sy);
+    speedYList.push(sy);
+    speedXList.push(sx);
+    round[i] = new RoundItem(i, x, y, sx, sy);
   }
   draw();
 }
@@ -79,32 +84,45 @@ function draw() {
 
   const algorithm = divideAndConquer ? closestPairDC : closestPairBruteWASM;
   const [aIndex, bIndex] = algorithm(round);
-
+  ctx.strokeStyle = "gray"
   for (let i = 0; i < round.length; i++) {
-    const fill = i === aIndex || i === bIndex;
-    round[i].draw(fill);
-    const { speedY, speedX } = round[i];
-    const nextX = round[i].x + speedX;
-    const nextY = round[i].y + speedY;
-    round[i].x = clamp(nextX, RADIUS, MAX_X);
-    round[i].y = clamp(nextY, RADIUS, MAX_Y);
+    const currentRound = round[i];
+    currentRound.draw(i === aIndex || i === bIndex);
+    // const { speedY, speedX } = round[i];
+    const speedX = speedXList[i];
+    const speedY = speedYList[i];
+    const nextX = currentRound.x + speedX;
+    const nextY = currentRound.y + speedY;
+    currentRound.x = nextX < RADIUS ? RADIUS : nextX > MAX_X ? MAX_X : nextX;
+    currentRound.y = nextY < RADIUS ? RADIUS : nextY > MAX_Y ? MAX_Y : nextY;
+    // round[i].y = clamp(nextY, RADIUS, MAX_Y);
     const flag = inArea(nextX, nextY, RADIUS);
     if (!(flag & 1)) {
-      round[i].speedX *= -1;
+      speedXList[i] *= -1;
     }
     if (!((flag >> 1) & 1)) {
-      round[i].speedY *= -1;
+      speedYList[i] *= -1;
     }
+    // if (!vf) {
+    //   speedYList[i] *= -1;
+    // }
+
+    // if (!hf) {
+    //   speedXList[i] *= -1;
+    // }
   }
 
   window.requestAnimationFrame(draw);
 }
 
 function inArea(x, y, r) {
-  let res = 0;
-  res = res | (y - r >= 0 && y + r <= HEIGHT);
-  res = (res << 1) | (x - r >= 0 && x + r <= WIDTH);
-  return res;
+  // let res = 0;
+  let res = 0 | (y - r >= 0 && y + r <= HEIGHT);
+  return (res << 1) | (x - r >= 0 && x + r <= WIDTH);
+  // return {
+  //   hf: x - r >= 0 && x + r <= WIDTH,
+  //   vf: y - r >= 0 && y + r <= HEIGHT,
+  // };
 }
 //brute
 function closestPairBrute(roundList) {
@@ -130,10 +148,10 @@ function closestPairBrute(roundList) {
 }
 
 function closestPairBruteWASM(roundList) {
-  const rounds = roundList.map(({x, y}, i) => ({x, y, i}))
-  const res  = wasm.calculate(rounds);
-  
-  return [res, res];
+  const rounds = roundList.map(({ x, y }, i) => ({ x, y, i }));
+  // const res  = wasm.calculate(rounds);
+
+  return [1, 1];
 }
 // divide and conquer
 function closestPairDC(roundList) {
@@ -158,8 +176,9 @@ function closestPair2Helper(px, py) {
   const rx = px.slice(mid);
   const ly = [];
   const ry = [];
-  for (let i = 0; i < py.length; i++) {
-    if (py[i].x < px[mid].x && ly.length < mid) {
+  const targetX = px[mid].x;
+  for (let i = 0, length; i < length; i++) {
+    if (py[i].x < targetX && ly.length < mid) {
       ly.push(py[i]);
     } else {
       ry.push(py[i]);
