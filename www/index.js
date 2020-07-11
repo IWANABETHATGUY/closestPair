@@ -6,7 +6,7 @@ let canvas = document.getElementById("canvas"),
   WIDTH,
   HEIGHT,
   RADIUS,
-  initRoundPopulation = 3000;
+  initRoundPopulation = 7000
 let divideAndConquer = false;
 
 WIDTH = document.documentElement.clientWidth;
@@ -66,11 +66,11 @@ function clamp(val, min, max) {
 }
 
 function init() {
-  roundsCanvasWasm = wasm.RoundCanvas.new(WIDTH, HEIGHT, RADIUS, 3000);
+  roundsCanvasWasm = wasm.RoundCanvas.new(WIDTH, HEIGHT, RADIUS, initRoundPopulation);
   wasmRoundList = new Float32Array(
     memory.buffer,
     roundsCanvasWasm.rounds(),
-    3000 * 5
+    initRoundPopulation * 5
   );
   for (let i = 0; i < initRoundPopulation; i++) {
     const x = clamp(WIDTH * Math.random(), RADIUS, MAX_X);
@@ -91,7 +91,7 @@ drawWasm();
 function drawWasm() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const [aIndex, bIndex] = roundsCanvasWasm.closest_pair_brute()
+  roundsCanvasWasm.closest_pair_dc()
   // console.log([aIndex, bIndex])
   ctx.strokeStyle = "gray";
   for (let i = 0; i < wasmRoundList.length; i += 5) {
@@ -196,7 +196,7 @@ function closestPair2Helper(px, py) {
   const ly = [];
   const ry = [];
   const targetX = px[mid].x;
-  for (let i = 0, length; i < length; i++) {
+  for (let i = 0, length = py.length; i < length; i++) {
     if (py[i].x < targetX && ly.length < mid) {
       ly.push(py[i]);
     } else {
