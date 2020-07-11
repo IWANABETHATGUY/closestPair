@@ -6,7 +6,7 @@ let canvas = document.getElementById("canvas"),
   WIDTH,
   HEIGHT,
   RADIUS,
-  initRoundPopulation = 7000
+  initRoundPopulation = 3000;
 let divideAndConquer = false;
 
 WIDTH = document.documentElement.clientWidth;
@@ -45,20 +45,21 @@ class RoundItem {
     this.r = RADIUS;
     this.color = STROKE_COLOR;
   }
-  draw(fill) {
-    // ctx.strokeStyle = this.color;
-    ctx.beginPath();
+  draw() {
+    ctx.moveTo(this.x + this.r, this.y);
     ctx.arc(this.x, this.y, this.r, 0, twoTimesPi, false);
-    ctx.closePath();
-    ctx.stroke();
-    fill && ctx.fill();
+  }
+  fill() {
+    ctx.beginPath()
+    ctx.arc(this.x, this.y, this.r, 0, twoTimesPi, false);
+    ctx.closePath()
+    ctx.fill()
   }
 }
 function drawCircle(x, y, r, fill = false) {
   ctx.beginPath();
   ctx.arc(x, y, r, 0, twoTimesPi, false);
-  // ctx.closePath();
-  ctx.stroke();
+  ctx.closePath();
   fill && ctx.fill();
 }
 function clamp(val, min, max) {
@@ -66,7 +67,12 @@ function clamp(val, min, max) {
 }
 
 function init() {
-  roundsCanvasWasm = wasm.RoundCanvas.new(WIDTH, HEIGHT, RADIUS, initRoundPopulation);
+  roundsCanvasWasm = wasm.RoundCanvas.new(
+    WIDTH,
+    HEIGHT,
+    RADIUS,
+    initRoundPopulation
+  );
   wasmRoundList = new Float32Array(
     memory.buffer,
     roundsCanvasWasm.rounds(),
@@ -86,12 +92,12 @@ function init() {
 }
 
 init();
-drawWasm();
-// draw()
+// drawWasm();
+draw();
 function drawWasm() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  roundsCanvasWasm.closest_pair_dc()
+  roundsCanvasWasm.closest_pair_dc();
   // console.log([aIndex, bIndex])
   ctx.strokeStyle = "gray";
   for (let i = 0; i < wasmRoundList.length; i += 5) {
@@ -100,9 +106,8 @@ function drawWasm() {
     const r = wasmRoundList[i + 2];
 
     drawCircle(x, y, r, false);
-
   }
-  roundsCanvasWasm.tick()
+  roundsCanvasWasm.tick();
   window.requestAnimationFrame(drawWasm);
 }
 
@@ -111,11 +116,10 @@ function draw() {
 
   const algorithm = divideAndConquer ? closestPairDC : closestPairBrute;
   const [aIndex, bIndex] = algorithm(round);
-  ctx.strokeStyle = "gray";
+  ctx.beginPath();
   for (let i = 0; i < round.length; i++) {
     const currentRound = round[i];
-    currentRound.draw(false);
-    // currentRound.draw(i === aIndex || i === bIndex);
+    currentRound.draw();
     const speedX = speedXList[i];
     const speedY = speedYList[i];
     const nextX = currentRound.x + speedX;
@@ -130,7 +134,10 @@ function draw() {
       speedYList[i] *= -1;
     }
   }
-
+  ctx.strokeStyle = "gray";
+  ctx.stroke();
+  round[aIndex].fill()
+  round[bIndex].fill()
   window.requestAnimationFrame(draw);
 }
 
