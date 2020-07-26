@@ -6,7 +6,7 @@ let canvas = document.getElementById("canvas"),
   WIDTH,
   HEIGHT,
   RADIUS,
-  initRoundPopulation = 3000;
+  initRoundPopulation = 5000;
 let divideAndConquer = false;
 
 WIDTH = document.documentElement.clientWidth;
@@ -50,18 +50,17 @@ class RoundItem {
     ctx.arc(this.x, this.y, this.r, 0, twoTimesPi, false);
   }
   fill() {
-    ctx.beginPath()
+    ctx.beginPath();
     ctx.arc(this.x, this.y, this.r, 0, twoTimesPi, false);
-    ctx.closePath()
-    ctx.fill()
+    ctx.closePath();
+    ctx.fill();
   }
 }
-function drawCircle(x, y, r, fill = false) {
-  ctx.beginPath();
+function drawCircle(x, y, r) {
+  ctx.moveTo(x + r, y);
   ctx.arc(x, y, r, 0, twoTimesPi, false);
-  ctx.closePath();
-  fill && ctx.fill();
 }
+
 function clamp(val, min, max) {
   return val < min ? min : val > max ? max : val;
 }
@@ -92,21 +91,23 @@ function init() {
 }
 
 init();
-// drawWasm();
-draw();
+drawWasm();
+// draw();
 function drawWasm() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+  
   roundsCanvasWasm.closest_pair_dc();
+  ctx.beginPath();
   // console.log([aIndex, bIndex])
-  ctx.strokeStyle = "gray";
-  for (let i = 0; i < wasmRoundList.length; i += 5) {
+  for (let i = 0, len = wasmRoundList.length; i < len; i += 5) {
     const x = wasmRoundList[i];
     const y = wasmRoundList[i + 1];
     const r = wasmRoundList[i + 2];
 
-    drawCircle(x, y, r, false);
+    drawCircle(x, y, r);
   }
+  ctx.strokeStyle = "gray";
+  ctx.stroke();
   roundsCanvasWasm.tick();
   window.requestAnimationFrame(drawWasm);
 }
@@ -136,8 +137,8 @@ function draw() {
   }
   ctx.strokeStyle = "gray";
   ctx.stroke();
-  round[aIndex].fill()
-  round[bIndex].fill()
+  round[aIndex].fill();
+  round[bIndex].fill();
   window.requestAnimationFrame(draw);
 }
 

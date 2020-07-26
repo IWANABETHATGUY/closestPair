@@ -4,6 +4,7 @@ extern crate wasm_bindgen;
 
 // use serde::Deserialize;
 use wasm_bindgen::prelude::*;
+use std::rc::Rc;
 #[macro_use]
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -81,7 +82,7 @@ fn distance(a: &RoundItem, b: &RoundItem) -> f32 {
 //     }
 //   }
 // }
-// #[wasm_bindgen]
+#[wasm_bindgen]
 pub struct RoundItem {
     x: f32,
     y: f32,
@@ -89,7 +90,7 @@ pub struct RoundItem {
     speed_x: f32,
     speed_y: f32,
 }
-// #[wasm_bindgen]
+#[wasm_bindgen]
 pub struct RoundCanvas {
     width: i32,
     height: i32,
@@ -110,7 +111,7 @@ fn distance_point_tuple(a: &PointTuple, b: &PointTuple) -> f32 {
 }
 
 type PointTuple = (f32, f32, usize);
-// #[wasm_bindgen]
+#[wasm_bindgen]
 impl RoundCanvas {
     // function closestPair2Helper(px, py) {
     //   if (px.length <= 3) {
@@ -154,51 +155,51 @@ impl RoundCanvas {
     // }
     fn closest_pair_helper(
         &self,
-        px: &[PointTuple],
-        py: &[PointTuple],
-    ) -> (PointTuple, PointTuple) {
+        px: &[Rc<PointTuple>],
+        py: &[Rc<PointTuple>],
+    ) -> (Rc<PointTuple>, Rc<PointTuple>) {
         if px.len() <= 3 {
             if px.len() == 3 {
                 return self.closest_from_three_point_tuple(px);
             } else {
-                return (px[0], px[1]);
+                return (px[0].clone(), px[1].clone());
             };
         }
         let mid = px.len() / 2;
         let lx = &px[0..mid];
         let rx = &px[mid..];
-        let mut ly = vec![(1.0, 1.0, 1); 1];
-        let mut ry = vec![(1.0, 1.0, 1); 1];
+        let mut ly = Vec::with_capacity(mid);
+        let mut ry = Vec::with_capacity(px.len() - mid);
         // let mut ly= vec![];
         // let mut ry: Vec<PointTuple> = vec![];
         let pivot_x = px[mid].0;
 
-        for item in py {
+        for item in py.iter() {
             if item.0 < pivot_x && ly.len() < mid {
-                ly[0] = *item;
+                ly.push(item.clone());
             } else {
-                ry[0] = *item;
+                ry.push(item.clone());
             }
         }
         let (l1, l2) = self.closest_pair_helper(&lx, &ly);
         let (r1, r2) = self.closest_pair_helper(&rx, &ry);
         let min;
         let minPair;
-        let disl1l2 = distance_point_tuple(&l1, &l2);
-        let disr1r2 = distance_point_tuple(&r1, &r2);
-        if (disl1l2 < disr1r2) {
-            min = disl1l2;
+        let distancel1l2 = distance_point_tuple(&l1, &l2);
+        let distancer1r2 = distance_point_tuple(&r1, &r2);
+        if distancel1l2 < distancer1r2 {
+            min = distancel1l2;
             minPair = (l1, r2);
         } else {
-            min = disr1r2;
+            min = distancer1r2;
             minPair = (r1, l2);
         }
         minPair
     }
     fn closest_from_three_point_tuple(
         &self,
-        three_point_tuple: &[PointTuple],
-    ) -> (PointTuple, PointTuple) {
+        three_point_tuple: &[Rc<PointTuple>],
+    ) -> (Rc<PointTuple>, Rc<PointTuple>) {
         let p0 = unsafe { three_point_tuple.get_unchecked(0) };
         let p1 = unsafe { three_point_tuple.get_unchecked(1) };
         let p2 = unsafe { three_point_tuple.get_unchecked(2) };
@@ -207,28 +208,27 @@ impl RoundCanvas {
         let dis02 = distance_point_tuple(p0, p2);
         if dis01 < dis12 {
             if dis01 < dis02 {
-                (three_point_tuple[0], three_point_tuple[1])
+                (p0.clone(), p1.clone())
             } else {
-                (three_point_tuple[0], three_point_tuple[2])
+                (p0.clone(), p2.clone())
             }
         } else {
             if dis12 < dis02 {
-                (three_point_tuple[1], three_point_tuple[2])
+                (p1.clone(), p2.clone())
             } else {
-                (three_point_tuple[0], three_point_tuple[2])
+                (p0.clone(), p2.clone())
             }
         }
     }
 
     pub fn closest_pair_dc(&self) {
-        let mut PX: Vec<PointTuple> = self
+        let mut PX: Vec<Rc<PointTuple>> = self
             .roundList
             .iter()
             .enumerate()
-            .map(|(index, item)| (item.x, item.y, index))
+            .map(|(index, item)| Rc::new((item.x, item.y, index)))
             .collect();
-        let mut PY = vec![(0.0, 0.0, 0); self.count];
-        PY.clone_from_slice(&PX);
+        let mut PY = PX.clone();
         PX.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
         PY.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
         let (a, b) = self.closest_pair_helper(&PX, &PY);
@@ -286,18 +286,18 @@ impl RoundCanvas {
         let max_x = width as f32 - r;
         let max_y = height as f32 - r;
         for i in 0..count {
-            // let x = clamp(max_x, r, (js_sys::Math::random() * width as f64) as f32) as f32;
-            // let y = clamp(max_y, r, (js_sys::Math::random() * height as f64) as f32) as f32;
-            // let x_direction = if js_sys::Math::random() > 0.5 { 1 } else { -1 };
-            // let y_direction = if js_sys::Math::random() > 0.5 { 1 } else { -1 };
-            // let speed_x = (js_sys::Math::random() * 1.0 + 0.5) as f32 * x_direction as f32;
-            // let speed_y = (js_sys::Math::random() * 1.0 + 0.5) as f32 * y_direction as f32;
+            let x = clamp(max_x, r, (js_sys::Math::random() * width as f64) as f32) as f32;
+            let y = clamp(max_y, r, (js_sys::Math::random() * height as f64) as f32) as f32;
+            let x_direction = if js_sys::Math::random() > 0.5 { 1 } else { -1 };
+            let y_direction = if js_sys::Math::random() > 0.5 { 1 } else { -1 };
+            let speed_x = (js_sys::Math::random() * 1.0 + 0.5) as f32 * x_direction as f32;
+            let speed_y = (js_sys::Math::random() * 1.0 + 0.5) as f32 * y_direction as f32;
             roundList.push(RoundItem {
                 r,
-                speed_x: 1.0,
-                speed_y: 2.0,
-                x: 20.0,
-                y: 20.0,
+                speed_x,
+                speed_y,
+                x,
+                y,
             });
         }
         RoundCanvas {
