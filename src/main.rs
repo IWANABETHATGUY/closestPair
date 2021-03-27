@@ -6,22 +6,8 @@ pub struct RoundItem {
     y: f32,
 }
 fn main() {
-    // let a = std::mem::size_of::<RoundItem>();
-    let mut a = vec![];
-    for i in 0..10 {
-        a.push(Rc::new(RoundItem {
-            x: i as f32,
-            y: i as f32 * -1.0,
-        }));
-    }
-    let mut b = a.clone();
-    a.sort_by(|a, b| {
-        a.x.partial_cmp(&b.x).unwrap()
-    });
-
-    b.sort_by(|a, b| {
-        a.y.partial_cmp(&b.y).unwrap()
-    });
-    println!("{:?}", a);
-    println!("{:?}", b);
+    let mut universe = closest_pair::RoundCanvas::new(1200, 1200, 10.0, 5000);
+    universe.tick();
+    let res = universe.closest_pair_dc();
+    println!("{:?}", res);
 }

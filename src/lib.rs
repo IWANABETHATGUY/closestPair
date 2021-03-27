@@ -1,17 +1,22 @@
 mod utils;
 
-extern crate wasm_bindgen;
-
 // use serde::Deserialize;
-use wasm_bindgen::prelude::*;
 use std::rc::Rc;
+use wasm_bindgen::prelude::*;
 #[macro_use]
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
-#[cfg(feature = "wee_alloc")]
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
+// #[cfg(feature = "wee_alloc")]
+// #[global_allocator]
+// static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+#[cfg(my_test)]
+fn random() -> f64 {
+    1.0f64
+}
+#[cfg(not(my_test))]
+fn random() -> f64 {
+    unsafe { js_sys::Math::random() }
+}
 // #[derive(Serialize, Deserialize)]
 // struct Point {
 //     x: f32,
@@ -44,44 +49,8 @@ fn distance(a: &RoundItem, b: &RoundItem) -> f32 {
     let y = a.y - b.y;
     (x * x + y * y).sqrt()
 }
-// #[wasm_bindgen]
-// pub fn calculate(points: &js_sys::Array) -> i32 {
-//     let points: Vec<i32> = points.into_serde().unwrap();
-//     let mut res = [0, 1];
-//     let mut closestDistance = distance(&points[0], &points[1]);
-//     for (ii, ip) in points.iter().enumerate() {
-//         for (ji, jp) in points.iter().enumerate().skip(ii + 1) {
-//             let distance = distance(ip, jp);
-//             if distance < closestDistance {
-//                 res = [ii, ji];
-//                 closestDistance = distance;
-//             }
-//         }
-//     }
-//     res[0] as i32
-// }
 
-// class RoundItem {
-//   constructor(index, x, y, speedX, speedY) {
-//     this.index = index;
-//     this.x = x;
-//     this.y = y;
-//     this.speedX = speedX;
-//     this.speedY = speedY;
-//     this.r = RADIUS;
-//     this.color = STROKE_COLOR;
-//   }
-//   draw(fill) {
-//     ctx.strokeStyle = this.color;
-//     ctx.beginPath();
-//     ctx.arc(this.x, this.y, this.r, 0, 2 * Math.PI, false);
-//     ctx.closePath();
-//     ctx.stroke();
-//     if (fill) {
-//       ctx.fill();
-//     }
-//   }
-// }
+
 #[wasm_bindgen]
 pub struct RoundItem {
     x: f32,
@@ -113,56 +82,16 @@ fn distance_point_tuple(a: &PointTuple, b: &PointTuple) -> f32 {
 type PointTuple = (f32, f32, usize);
 #[wasm_bindgen]
 impl RoundCanvas {
-    // function closestPair2Helper(px, py) {
-    //   if (px.length <= 3) {
-    //     return px.length === 3 ? closestFromThree(px) : px;
-    //   }
-    //   const mid = ~~(px.length / 2);
-    //   const lx = px.slice(0, mid);
-    //   const rx = px.slice(mid);
-    //   const ly = [];
-    //   const ry = [];
-    //   const targetX = px[mid].x;
-    //   for (let i = 0, length; i < length; i++) {
-    //     if (py[i].x < targetX && ly.length < mid) {
-    //       ly.push(py[i]);
-    //     } else {
-    //       ry.push(py[i]);
-    //     }
-    //   }
-    //   let [l1, l2] = closestPair2Helper(lx, ly);
-    //   let [r1, r2] = closestPair2Helper(rx, ry);
-    //   let minPair;
-    //   let min;
-    //   // let min = Math.min(distance(l1, l2), distance(r1, r2));
-    //   if (distance(l1, l2) < distance(r1, r2)) {
-    //     min = distance(l1, l2);
-    //     minPair = [l1, l2];
-    //   } else {
-    //     min = distance(r1, r2);
-    //     minPair = [r1, r2];
-    //   }
-    //   let [s1, s2] = closestSplitPair(px, py, min);
-    //   return s1
-    //     ? distance(l1, l2) < distance(r1, r2)
-    //       ? distance(l1, l2) < distance(s1, s2)
-    //         ? [l1, l2]
-    //         : [s1, s2]
-    //       : distance(r1, r2) < distance(s1, s2)
-    //       ? [r1, r2]
-    //       : [s1, s2]
-    //     : minPair;
-    // }
     fn closest_pair_helper(
         &self,
-        px: &[Rc<PointTuple>],
-        py: &[Rc<PointTuple>],
-    ) -> (Rc<PointTuple>, Rc<PointTuple>) {
+        px: &[PointTuple],
+        py: &[PointTuple],
+    ) -> (PointTuple, PointTuple) {
         if px.len() <= 3 {
             if px.len() == 3 {
                 return self.closest_from_three_point_tuple(px);
             } else {
-                return (px[0].clone(), px[1].clone());
+                return (px[0], px[1]);
             };
         }
         let mid = px.len() / 2;
@@ -176,9 +105,9 @@ impl RoundCanvas {
 
         for item in py.iter() {
             if item.0 < pivot_x && ly.len() < mid {
-                ly.push(item.clone());
+                ly.push(*item);
             } else {
-                ry.push(item.clone());
+                ry.push(*item);
             }
         }
         let (l1, l2) = self.closest_pair_helper(&lx, &ly);
@@ -198,8 +127,8 @@ impl RoundCanvas {
     }
     fn closest_from_three_point_tuple(
         &self,
-        three_point_tuple: &[Rc<PointTuple>],
-    ) -> (Rc<PointTuple>, Rc<PointTuple>) {
+        three_point_tuple: &[PointTuple],
+    ) -> (PointTuple, PointTuple) {
         let p0 = unsafe { three_point_tuple.get_unchecked(0) };
         let p1 = unsafe { three_point_tuple.get_unchecked(1) };
         let p2 = unsafe { three_point_tuple.get_unchecked(2) };
@@ -208,30 +137,32 @@ impl RoundCanvas {
         let dis02 = distance_point_tuple(p0, p2);
         if dis01 < dis12 {
             if dis01 < dis02 {
-                (p0.clone(), p1.clone())
+                (*p0, *p1)
             } else {
-                (p0.clone(), p2.clone())
+                (*p0, *p2)
             }
         } else {
             if dis12 < dis02 {
-                (p1.clone(), p2.clone())
+                (*p1, *p2)
             } else {
-                (p0.clone(), p2.clone())
+                (*p0, *p2)
             }
         }
     }
 
-    pub fn closest_pair_dc(&self) {
-        let mut PX: Vec<Rc<PointTuple>> = self
+    pub fn closest_pair_dc(&self) -> Vec<usize> {
+        let mut PX: Vec<PointTuple> = self
             .roundList
             .iter()
             .enumerate()
-            .map(|(index, item)| Rc::new((item.x, item.y, index)))
+            .map(|(index, item)| (item.x, item.y, index))
             .collect();
         let mut PY = PX.clone();
         PX.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
         PY.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-        let (a, b) = self.closest_pair_helper(&PX, &PY);
+        // let (a, b) = self.closest_pair_helper(&PX, &PY);
+        // [a.2, b.2].into()
+        vec![]
     }
     pub fn closest_pair_brute(&self) -> Vec<usize> {
         let mut res = vec![0, 1];
@@ -286,12 +217,12 @@ impl RoundCanvas {
         let max_x = width as f32 - r;
         let max_y = height as f32 - r;
         for i in 0..count {
-            let x = clamp(max_x, r, (js_sys::Math::random() * width as f64) as f32) as f32;
-            let y = clamp(max_y, r, (js_sys::Math::random() * height as f64) as f32) as f32;
-            let x_direction = if js_sys::Math::random() > 0.5 { 1 } else { -1 };
-            let y_direction = if js_sys::Math::random() > 0.5 { 1 } else { -1 };
-            let speed_x = (js_sys::Math::random() * 1.0 + 0.5) as f32 * x_direction as f32;
-            let speed_y = (js_sys::Math::random() * 1.0 + 0.5) as f32 * y_direction as f32;
+            let x = clamp(max_x, r, (random() * width as f64) as f32) as f32;
+            let y = clamp(max_y, r, (random() * height as f64) as f32) as f32;
+            let x_direction = if random() > 0.5 { 1 } else { -1 };
+            let y_direction = if random() > 0.5 { 1 } else { -1 };
+            let speed_x = (random() * 1.0 + 0.5) as f32 * x_direction as f32;
+            let speed_y = (random() * 1.0 + 0.5) as f32 * y_direction as f32;
             roundList.push(RoundItem {
                 r,
                 speed_x,
