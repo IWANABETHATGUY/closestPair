@@ -15,13 +15,7 @@ fn main() {
         }));
     }
     let mut b = a.clone();
-    a.sort_by(|a, b| {
-        a.x.partial_cmp(&b.x).unwrap()
-    });
+    a.sort_by(|a, b| a.x.partial_cmp(&b.x).unwrap());
 
-    b.sort_by(|a, b| {
-        a.y.partial_cmp(&b.y).unwrap()
-    });
-    println!("{:?}", a);
-    println!("{:?}", b);
+    b.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap());
 }
